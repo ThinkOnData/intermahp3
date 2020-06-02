@@ -114,6 +114,9 @@ API for InterMAHP Shiny App
 
 \code{$get_long_afs} Invokes get_afs and formats as long
 
+\code{$get_long_afs_shiny} Invokes get_long_afs and then modifies variable names
+ and values for the shiny app
+
 \code{$get_long_counts} Invokes get_long_afs and applied afs to counts
 }
 

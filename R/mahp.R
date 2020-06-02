@@ -104,6 +104,9 @@
 #'
 #'\code{$get_long_afs} Invokes get_afs and formats as long
 #'
+#'\code{$get_long_afs_shiny} Invokes get_long_afs and then modifies variable names
+#'  and values for the shiny app
+#'
 #'\code{$get_long_counts} Invokes get_long_afs and applied afs to counts
 #'
 #'@importFrom R6 R6Class
@@ -1336,6 +1339,50 @@ mahp <- R6Class(
 
       .long_af = .wide_af %>% gather(key = 'af_key', value = 'af_value', .af_names)
       .long_af
+    },
+
+    get_long_afs_shiny = function() {
+      .wide_af = self$get_afs()
+      .af_names = names(.wide_af)[grep('^(saf|af)', names(.wide_af))]
+
+      .long_af = .wide_af %>% gather(key = 'af_key', value = 'af_value', .af_names)
+      .long_af %>%
+        ## In the app we prefer separate status & scenarios variables over
+        ## rewriting a lot of code
+        mutate(status = gsub('^...?_([[:alnum:]]*).*', '\\1', af_key)) %>%
+        mutate(sn = as.numeric(gsub('.*(.{6})$', '\\1', af_key))) %>%
+        mutate(scenario = ifelse(sn == 1, 'Baseline', paste0(sprintf('%02.2+f', 100 * (sn - 1)), '%'))) %>%
+        mutate(cc = str_sub(im, 2, 2)) %>%
+        inner_join(
+          tibble(
+            # This is the canonical CC designation for the InterMAHP shiny app
+            # if this is needed LITERALLY anywhere else, we need to include it
+            # as a separate data object, or weave it onto the RR data
+            #
+            # i know, i know ... im just so tired ...
+            cc = as.character(1:9),
+            condition_category = c(
+              "Communicable",
+              "Cancer",
+              "Endocrine",
+              "Neuro",
+              "Cardio",
+              "Digestive",
+              "Collisions",
+              "Unintentional",
+              "Intentional"
+            )
+          ),
+          by = "cc"
+        ) %>%
+        ## In the app we want to bring the gender values back to something readable.  Not super sure
+        ## what the best approach is here --- pretty sure that the existing risk research uses sex and gender
+        ## interchangably. Right now I'm choosing to 1. maintain compatability with old versions of intermahp
+        ## that required a variable named 'gender', and 2. removing the confusion of using male/female values
+        ## for that variable.  We convert w to Women, m to Men.
+        ## At some point it would be preferred to swicth over to the WHO standard of calling this variable 'sex'
+        ## rather than gender, and using male/female as values.
+        mutate(gender = ifelse(gender == 'w', 'Women', 'Men'))
     },
 
     ## Invokes get_long_afs and applied afs to counts
